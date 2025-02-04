@@ -40,7 +40,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU Next & SUSFS v1.5.4 *TEST BUILD*"
       RELEASE_NOTES: |
-        This release contains KernelSU Next and SUSFS v1.5.4
+        This release contains KernelSU Next and SUSFS v1.5.X
           
         Module: 
         -> https://github.com/sidex15/ksu_module_susfs
@@ -53,7 +53,7 @@ jobs:
 
         Features:
         [+] KernelSU
-        [+] SUSFS v1.5.4
+        [+] SUSFS v1.5.X
         [+] Wireguard Support
         [+] Maphide LineageOS Detections
         [+] Futile Maphide for jit-zygote-cache Detections
