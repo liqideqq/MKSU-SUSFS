@@ -24,7 +24,7 @@ on:
 
 jobs:
   build-kernel-a13:
-    uses: ./.github/workflows/build-kernel-a13.yml
+    uses: ./.github/workflows/build-kernel.yml
     secrets: inherit
     if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
 
