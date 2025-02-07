@@ -5,42 +5,73 @@ permissions:
   actions: write   # Allows triggering actions
   
 on:
-  #push:
-  #  branches:
-  #    - main  # Trigger on push to the main branch
   workflow_dispatch:
     inputs:
-      build_a13:
-        description: 'Build Android 13 kernel?'
+      runner:
+        description: "Choose runner"
+        required: true
+        type: choice
+        options:
+          - ubuntu-22.04
+          - ubuntu-local
+        default: ubuntu-22.04
+      lto_type:
+        description: "Choose LTO type (full will not run on basic runners)"
+        required: true
+        type: choice
+        options:
+          - full
+          - thin
+          - none
+        default: thin
+      build_a13_5_15:
+        description: 'Build Android 13 5.15 kernel?'
         required: true
         type: boolean
         default: true
-
       make_release:
         description: 'Do you want to create a release?'
         required: true
         type: boolean
         default: false
+      next_branch:
+        description: "Choose next branch"
+        required: true
+        type: choice
+        options:
+          - Stable
+          - Dev
+          - Other
+        default: Stable
+      next_branch_other:
+        description: "If 'Other' is selected, specify your custom branch"
+        required: false
+        type: string  # This input is required if 'Other' is chosen
+        default: ""  # Default is empty, but can be filled in if 'Other' is selected
 
 jobs:
-  build-kernel-a13:
+  build-kernel-a13-5-15:
     uses: ./.github/workflows/build-kernel.yml
     secrets: inherit
-    if: ${{ github.event.inputs.build_a13 == 'true' || github.event.inputs.build_a13 == '' }}
+    if: ${{ inputs.build_a13_5_15 }}
+    with:
+      runner: ${{ inputs.runner }}
+      lto_type: ${{ inputs.lto_type }}
+      next_branch: ${{ inputs.next_branch }}
+      next_branch_other: ${{ inputs.next_branch_other }}
 
   trigger-release:
     runs-on: ubuntu-latest
-    timeout-minutes: 2160  # Set maximum timeout
     needs:
-        - build-kernel-a13 # Ensure the release only runs after the build jobs complete or are skipped
-    if: ${{ github.event.inputs.make_release == 'true' }}
+        - build-kernel-a13-5-15
+    if: ${{ inputs.make_release }}
     env:
-      REPO_OWNER: TheWildJames
+      REPO_OWNER: WildPlusKernel
       REPO_NAME: GKI_KernelSU_SUSFS
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU Next & SUSFS v1.5.X *TEST BUILD*"
+      GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+      RELEASE_NAME: "*TEST BUILD* GKI Kernels With KernelSU & SUSFS v1.5.5 *TEST BUILD*"
       RELEASE_NOTES: |
-        This release contains KernelSU Next and SUSFS v1.5.X
+        This release contains KernelSU and SUSFS v1.5.5
           
         Module: 
         -> https://github.com/sidex15/ksu_module_susfs
@@ -50,10 +81,10 @@ jobs:
         
         Non-Official Managers:
         -> https://github.com/5ec1cff/KernelSU
-
+        
         Features:
         [+] KernelSU
-        [+] SUSFS v1.5.X
+        [+] SUSFS v1.5.5
         [+] Wireguard Support
         [+] Maphide LineageOS Detections
         [+] Futile Maphide for jit-zygote-cache Detections
@@ -64,16 +95,112 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Determine the branch for KernelSU
+        run: |
+          # Determine the branch based on user input
+          if [[ "${{ inputs.next_branch }}" == "Stable" ]]; then
+            BRANCH="Stable"
+          elif [[ "${{ inputs.next_branch }}" == "Dev" ]]; then
+            BRANCH="next"
+          elif [[ "${{ inputs.next_branch }}" == "Other" && -n "${{ inputs.next_branch_other }}" ]]; then
+            BRANCH="${{ inputs.next_branch_other }}"
+          else
+            echo "Error: Custom branch not provided for 'Other'" >&2
+            exit 1
+          fi
+
+          # Store the selected branch in GITHUB_ENV
+          echo "KSU_BRANCH=$BRANCH" >> $GITHUB_ENV
+
+      - name: Get commit hash or tag and generate URL for KernelSU
+        run: |
+          REPO_URL="https://github.com/5ec1cff/KernelSU.git"
+          BRANCH="${{ env.KSU_BRANCH }}"
+          
+          if [[ "$BRANCH" == "Stable" ]]; then
+            # Fetch the latest tag
+            TAG=$(git ls-remote --tags --sort=-v:refname $REPO_URL | grep -o 'refs/tags/.*' | cut -d'/' -f3 | head -n1)
+            if [[ -z "$TAG" ]]; then
+              echo "Error: Could not fetch latest tag for KernelSU" >&2
+              exit 1
+            fi
+            KSU_REF=$TAG
+            KSU_URL="https://github.com/5ec1cff/KernelSU/releases/tag/$TAG"
+
+          elif [[ "$BRANCH" == "next" ]]; then
+            # Fetch the latest commit from "next" branch
+            COMMIT_HASH=$(git ls-remote $REPO_URL refs/heads/$BRANCH | awk '{ print $1 }')
+            if [[ -z "$COMMIT_HASH" ]]; then
+              echo "Error: Could not fetch latest commit for KernelSU Dev" >&2
+              exit 1
+            fi
+            KSU_REF=$COMMIT_HASH
+            KSU_URL="https://github.com/5ec1cff/KernelSU/commit/$COMMIT_HASH"
+
+          else
+            # Fetch the specific tag for the custom branch
+            TAG=$BRANCH
+            if git ls-remote --tags $REPO_URL | grep -q "refs/tags/$TAG"; then
+              KSU_REF=$TAG
+              KSU_URL="https://github.com/5ec1cff/KernelSU/releases/tag/$TAG"
+            else
+              echo "Error: Specified tag '$TAG' not found in KernelSU" >&2
+              exit 1
+            fi
+          fi
+
+          # Echo the values to GitHub environment for later use
+          echo "KSU_REF=$KSU_REF" >> $GITHUB_ENV
+          echo "KSU_URL=$KSU_URL" >> $GITHUB_ENV
+          echo "KernelSU Reference: $KSU_REF"
+          echo "KernelSU URL: $KSU_URL"
+
+      - name: Get commit hashes and generate commit URLs
+        run: |
+          GITLAB_OWNER="simonpunk"
+          GITLAB_REPO="susfs4ksu"
+
+          declare -A BRANCH_MAP=(
+            ["gki_android13_5_15"]="gki-android13-5.15"
+          )
+
+          for var_name in "${!BRANCH_MAP[@]}"; do
+            branch_name="${BRANCH_MAP[$var_name]}"
+            COMMIT_HASH=$(git ls-remote https://gitlab.com/$GITLAB_OWNER/$GITLAB_REPO.git refs/heads/$branch_name | awk '{ print $1 }')
+
+            if [[ -n "$COMMIT_HASH" ]]; then
+              COMMIT_URL="https://gitlab.com/$GITLAB_OWNER/$GITLAB_REPO/-/commit/$COMMIT_HASH"
+              echo "$branch_name Commit: $COMMIT_HASH"
+              echo "$branch_name Commit URL: $COMMIT_URL"
+
+              # Store commit hash and commit URL in GitHub environment
+              echo "COMMIT_HASH_${var_name}=$COMMIT_HASH" >> "$GITHUB_ENV"
+              echo "COMMIT_URL_${var_name}=$COMMIT_URL" >> "$GITHUB_ENV"
+            fi
+          done
+          
+      - name: Append Commit Hashes & Links to `RELEASE_NOTES` & Append KernelSU Reference to `RELEASE_NOTES`
+        run: |
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+          echo "$RELEASE_NOTES" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "LTO TYPE: $lto_type" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "Commit Hashes & Links:" >> $GITHUB_ENV
+          echo "KernelSU: [$KSU_REF]($KSU_URL)" >> $GITHUB_ENV
+          echo "[SUSFS4KSU](https://gitlab.com/simonpunk/susfs4ksu):" >> $GITHUB_ENV
+          echo "gki-android13-5.15: [$COMMIT_HASH_gki_android13_5_15]($COMMIT_URL_gki_android13_5_15)" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          
       # Get the Latest Tag from GitHub
       - name: Generate and Create New Tag
         run: |
             # Fetch the latest tag from GitHub (this is the latest tag based on the GitHub API)
             LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
             if [ -z "$LATEST_TAG" ]; then
-              LATEST_TAG="v1.5.3-0"  # Default to v1.5.3-0 if no tag exists
+              LATEST_TAG="v1.5.5-0"
             fi
-
-            # Increment the suffix (e.g., v1.5.3-0 becomes v1.5.3-1)
+            
             NEW_TAG=$(echo "$LATEST_TAG" | awk -F- '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-%d", $1, suffix}')
     
             # Output the new tag to be used
@@ -94,15 +221,12 @@ jobs:
 
       # Create GitHub Release and upload files if make_release is true
       - name: Create GitHub Release
-        if: ${{ github.event.inputs.make_release == 'true' }}  # Only run if make_release is true and all build jobs succeeded
         uses: actions/create-release@v1
         with:
           tag_name: ${{ env.NEW_TAG }}  # Use the generated tag for the release
           prerelease: true  # Mark the release as a pre-release
           release_name: ${{ env.RELEASE_NAME }}  # Pass the RELEASE_NAME to the action
           body: ${{ env.RELEASE_NOTES }}  # Pass the RELEASE_NOTES to the action
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Release Assets Dynamically
         run: |
@@ -117,9 +241,6 @@ jobs:
               echo "Uploading $file..."
               gh release upload ${{ env.NEW_TAG }} "$file"
           done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEW_TAG: ${{ env.NEW_TAG }}
       # Display Files Uploaded
       - name: Display Files Uploaded
         run: |
