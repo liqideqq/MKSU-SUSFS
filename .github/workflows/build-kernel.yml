@@ -25,7 +25,7 @@ jobs:
           - android_version: "android13"
             kernel_version: "5.15"
             sub_level: "94"
-            os_patch_level: "2025-01"
+            os_patch_level: "2023-05"
 
     steps:
       - name: Maximize build space
@@ -107,7 +107,7 @@ jobs:
           echo "Initializing and syncing kernel source..."
           FORMATTED_BRANCH="${{ matrix.android_version }}-${{ matrix.kernel_version }}-${{ matrix.os_patch_level }}"
           $REPO init --depth=1 --u https://android.googlesource.com/kernel/manifest -b common-${FORMATTED_BRANCH} --repo-rev=v2.16
-          git checkout v5.15.94
+          
           REMOTE_BRANCH=$(git ls-remote https://android.googlesource.com/kernel/common ${FORMATTED_BRANCH})
           DEFAULT_MANIFEST_PATH=.repo/manifests/default.xml
 
