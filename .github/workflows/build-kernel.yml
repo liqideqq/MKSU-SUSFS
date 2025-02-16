@@ -140,7 +140,7 @@ jobs:
           cd "$CONFIG"
           
           echo "Adding KernelSU..."
-          curl -LSs "https://raw.githubusercontent.com/5ec1cff/KernelSU/main/kernel/setup.sh" | bash $BRANCH
+          curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/magic/kernel/setup.sh" | bash $BRANCH
           cd ./KernelSU/
           # Reverting commit
           git revert -m 1 $(git log --grep="remove devpts hook" --pretty=format:"%h") -n
