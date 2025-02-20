@@ -80,7 +80,7 @@ jobs:
         -> https://github.com/tiann/KernelSU
         
         Non-Official Managers:
-        -> https://github.com/liqideqq/KernelSU
+        -> https://github.com/5ec1cff/KernelSU
         
         Features:
         [+] KernelSU
@@ -114,7 +114,7 @@ jobs:
 
       - name: Get commit hash or tag and generate URL for KernelSU
         run: |
-          REPO_URL="https://github.com/liqideqq/KernelSU.git"
+          REPO_URL="https://github.com/5ec1cff/KernelSU.git"
           BRANCH="${{ env.KSU_BRANCH }}"
           
           if [[ "$BRANCH" == "Stable" ]]; then
@@ -125,7 +125,7 @@ jobs:
               exit 1
             fi
             KSU_REF=$TAG
-            KSU_URL="https://github.com/liqideqq/KernelSU/releases/tag/$TAG"
+            KSU_URL="https://github.com/5ec1cff/KernelSU/releases/tag/$TAG"
 
           elif [[ "$BRANCH" == "next" ]]; then
             # Fetch the latest commit from "next" branch
@@ -135,14 +135,14 @@ jobs:
               exit 1
             fi
             KSU_REF=$COMMIT_HASH
-            KSU_URL="https://github.com/liqideqq/KernelSU/commit/$COMMIT_HASH"
+            KSU_URL="https://github.com/5ec1cff/KernelSU/commit/$COMMIT_HASH"
 
           else
             # Fetch the specific tag for the custom branch
             TAG=$BRANCH
             if git ls-remote --tags $REPO_URL | grep -q "refs/tags/$TAG"; then
               KSU_REF=$TAG
-              KSU_URL="https://github.com/liqideqq/KernelSU/releases/tag/$TAG"
+              KSU_URL="https://github.com/5ec1cff/KernelSU/releases/tag/$TAG"
             else
               echo "Error: Specified tag '$TAG' not found in KernelSU" >&2
               exit 1
