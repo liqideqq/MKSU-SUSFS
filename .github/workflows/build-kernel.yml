@@ -140,10 +140,10 @@ jobs:
           cd "$CONFIG"
           
           echo "Adding KernelSU..."
-          curl -LSs "https://raw.githubusercontent.com/5ec1cff/KernelSU/main/kernel/setup.sh" | bash $BRANCH
+          curl -LSs "https://raw.githubusercontent.com/liqideqq/KernelSU/main/kernel/setup.sh" | bash $BRANCH
           cd ./KernelSU/
           # Reverting commit
-          git revert -m 1 36120da -n
+          git revert -m 1 933f955 -n
           KSU_VERSION=$(expr $(/usr/bin/git rev-list --count HEAD) "+" 12085)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
           sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
