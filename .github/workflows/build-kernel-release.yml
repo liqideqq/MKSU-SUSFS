@@ -34,7 +34,7 @@ on:
         required: true
         type: boolean
         default: false
-      next_branch:
+      kernelsu_branch:
         description: "Choose next branch"
         required: true
         type: choice
@@ -43,7 +43,7 @@ on:
           - Dev
           - Other
         default: Stable
-      next_branch_other:
+      kernelsu_branch_other:
         description: "If 'Other' is selected, specify your custom branch"
         required: false
         type: string  # This input is required if 'Other' is chosen
@@ -57,8 +57,8 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
-      next_branch: ${{ inputs.next_branch }}
-      next_branch_other: ${{ inputs.next_branch_other }}
+      kernelsu_branch: ${{ inputs.kernelsu_branch }}
+      kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
 
   trigger-release:
     runs-on: ubuntu-latest
@@ -98,12 +98,12 @@ jobs:
       - name: Determine the branch for KernelSU
         run: |
           # Determine the branch based on user input
-          if [[ "${{ inputs.next_branch }}" == "Stable" ]]; then
+          if [[ "${{ inputs.kernelsu_branch }}" == "Stable" ]]; then
             BRANCH="Stable"
-          elif [[ "${{ inputs.next_branch }}" == "Dev" ]]; then
+          elif [[ "${{ inputs.kernelsu_branch }}" == "Dev" ]]; then
             BRANCH="next"
-          elif [[ "${{ inputs.next_branch }}" == "Other" && -n "${{ inputs.next_branch_other }}" ]]; then
-            BRANCH="${{ inputs.next_branch_other }}"
+          elif [[ "${{ inputs.kernelsu_branch }}" == "Other" && -n "${{ inputs.kernelsu_branch_other }}" ]]; then
+            BRANCH="${{ inputs.kernelsu_branch_other }}"
           else
             echo "Error: Custom branch not provided for 'Other'" >&2
             exit 1
