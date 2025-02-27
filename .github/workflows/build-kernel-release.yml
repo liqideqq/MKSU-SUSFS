@@ -1,3 +1,4 @@
+
 name: Build and Release GKI Kernels
 
 permissions:
@@ -34,7 +35,7 @@ on:
         required: true
         type: boolean
         default: false
-      kernelsu_branch:
+      next_branch:
         description: "Choose next branch"
         required: true
         type: choice
@@ -43,7 +44,7 @@ on:
           - Dev
           - Other
         default: Stable
-      kernelsu_branch_other:
+      next_branch_other:
         description: "If 'Other' is selected, specify your custom branch"
         required: false
         type: string  # This input is required if 'Other' is chosen
@@ -57,8 +58,8 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
-      kernelsu_branch: ${{ inputs.kernelsu_branch }}
-      kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
+      next_branch: ${{ inputs.next_branch }}
+      next_branch_other: ${{ inputs.next_branch_other }}
 
   trigger-release:
     runs-on: ubuntu-latest
@@ -89,7 +90,6 @@ jobs:
         [+] Maphide LineageOS Detections
         [+] Futile Maphide for jit-zygote-cache Detections
         [+] Magic Mount Support
-
     steps:
       # Checkout the code
       - name: Checkout code
@@ -98,20 +98,18 @@ jobs:
       - name: Determine the branch for KernelSU
         run: |
           # Determine the branch based on user input
-          if [[ "${{ inputs.kernelsu_branch }}" == "Stable" ]]; then
+          if [[ "${{ inputs.next_branch }}" == "Stable" ]]; then
             BRANCH="Stable"
-          elif [[ "${{ inputs.kernelsu_branch }}" == "Dev" ]]; then
+          elif [[ "${{ inputs.next_branch }}" == "Dev" ]]; then
             BRANCH="next"
-          elif [[ "${{ inputs.kernelsu_branch }}" == "Other" && -n "${{ inputs.kernelsu_branch_other }}" ]]; then
-            BRANCH="${{ inputs.kernelsu_branch_other }}"
+          elif [[ "${{ inputs.next_branch }}" == "Other" && -n "${{ inputs.next_branch_other }}" ]]; then
+            BRANCH="${{ inputs.next_branch_other }}"
           else
             echo "Error: Custom branch not provided for 'Other'" >&2
             exit 1
           fi
-
           # Store the selected branch in GITHUB_ENV
           echo "KSU_BRANCH=$BRANCH" >> $GITHUB_ENV
-
       - name: Get commit hash or tag and generate URL for KernelSU
         run: |
           REPO_URL="https://github.com/5ec1cff/KernelSU.git"
@@ -126,7 +124,6 @@ jobs:
             fi
             KSU_REF=$TAG
             KSU_URL="https://github.com/5ec1cff/KernelSU/releases/tag/$TAG"
-
           elif [[ "$BRANCH" == "next" ]]; then
             # Fetch the latest commit from "next" branch
             COMMIT_HASH=$(git ls-remote $REPO_URL refs/heads/$BRANCH | awk '{ print $1 }')
@@ -136,7 +133,6 @@ jobs:
             fi
             KSU_REF=$COMMIT_HASH
             KSU_URL="https://github.com/5ec1cff/KernelSU/commit/$COMMIT_HASH"
-
           else
             # Fetch the specific tag for the custom branch
             TAG=$BRANCH
@@ -148,31 +144,25 @@ jobs:
               exit 1
             fi
           fi
-
           # Echo the values to GitHub environment for later use
           echo "KSU_REF=$KSU_REF" >> $GITHUB_ENV
           echo "KSU_URL=$KSU_URL" >> $GITHUB_ENV
           echo "KernelSU Reference: $KSU_REF"
           echo "KernelSU URL: $KSU_URL"
-
       - name: Get commit hashes and generate commit URLs
         run: |
           GITLAB_OWNER="simonpunk"
           GITLAB_REPO="susfs4ksu"
-
           declare -A BRANCH_MAP=(
             ["gki_android13_5_15"]="gki-android13-5.15"
           )
-
           for var_name in "${!BRANCH_MAP[@]}"; do
             branch_name="${BRANCH_MAP[$var_name]}"
             COMMIT_HASH=$(git ls-remote https://gitlab.com/$GITLAB_OWNER/$GITLAB_REPO.git refs/heads/$branch_name | awk '{ print $1 }')
-
             if [[ -n "$COMMIT_HASH" ]]; then
               COMMIT_URL="https://gitlab.com/$GITLAB_OWNER/$GITLAB_REPO/-/commit/$COMMIT_HASH"
               echo "$branch_name Commit: $COMMIT_HASH"
               echo "$branch_name Commit URL: $COMMIT_URL"
-
               # Store commit hash and commit URL in GitHub environment
               echo "COMMIT_HASH_${var_name}=$COMMIT_HASH" >> "$GITHUB_ENV"
               echo "COMMIT_URL_${var_name}=$COMMIT_URL" >> "$GITHUB_ENV"
@@ -236,7 +226,6 @@ jobs:
               if [ -d "$file" ]; then
                   continue
               fi
-
               # Upload the file to the GitHub release
               echo "Uploading $file..."
               gh release upload ${{ env.NEW_TAG }} "$file"
