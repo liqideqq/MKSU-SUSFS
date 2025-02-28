@@ -214,7 +214,10 @@ jobs:
           echo "CONFIG_IP_NF_TARGET_TTL=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_IP6_NF_TARGET_HL=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_IP6_NF_MATCH_HL=y" >> ./common/arch/arm64/configs/gki_defconfig
-
+         
+          # Remove check_defconfig
+          sed -i 's/check_defconfig//' ./common/build.config.gki
+          
       - name: Run sed and perl Commands
         run: |
           echo "Changing to configuration directory: $CONFIG..."
