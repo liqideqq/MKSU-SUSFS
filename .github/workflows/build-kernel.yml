@@ -151,9 +151,9 @@ jobs:
           
           # Copy SUSFS patches
           cp ../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./KernelSU/
-          cp $GITHUB_WORKSPACE/kernel_patches/mksu_susfs.patch ./KernelSU/
+          cp $GITHUB_WORKSPACE/kernel_patches/mksu/mksu_susfs.patch ./KernelSU/
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ matrix.android_version }}-${{ matrix.kernel_version }}.patch ./common/
-          cp $GITHUB_WORKSPACE/kernel_patches/fix.patch ./KernelSU/
+          cp $GITHUB_WORKSPACE/kernel_patches/mksu/fix.patch ./KernelSU/
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
 
